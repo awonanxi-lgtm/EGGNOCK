@@ -58,7 +58,7 @@
   .color-picker-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px;}
   input[type="color"] { cursor: pointer; width: 40px; height: 40px; border: none; border-radius: 4px; background: none; }
   
-  /* The Canvas Grid - Now with obvious visible cells! */
+  /* The visible canvas grid styling */
   #grid { 
     display: grid; grid-template-columns: repeat(20, 20px); gap: 1px; 
     background: var(--border); border: 2px solid var(--border); border-radius: 4px; 
@@ -154,12 +154,12 @@
   let gridData = Array.from({length: 20}, () => Array(20).fill(TRANSPARENT_CHAR));
   let activeChar = 'B';
   let isDrawing = false;
-  let currentMode = 'draw'; // 'draw' or 'fill'
+  let currentMode = 'draw';
   
-  // Character pool starts at B since A is reserved for transparency
+  // Character pool
   const charPool = 'BCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'.split('');
 
-  // Initial core palette from Eggnock's format
+  // Initial core palette
   let paletteOrder = ['A', 'B', 'C', 'D', 'E', 'F'];
   let PALETTE = {
     'A': 'transparent',
@@ -186,9 +186,9 @@
     return null; 
   }
 
-  // Helper: Convert Hex to RGB
+  // Helpers
   function hexToRgb(hex) {
-    if (hex === 'transparent') return {r:26,g:29,b:38,a:0}; // --bg2
+    if (hex === 'transparent') return {r:26,g:29,b:38,a:0}; 
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16), a:255 } : null;
   }
@@ -202,7 +202,7 @@
   // 2. Rename Logic
   function renameColor(oldChar) {
     if (oldChar === TRANSPARENT_CHAR) {
-      alert(`The Eraser (${TRANSPARENT_CHAR}) is reserved for transparency in Eggnock!`);
+      alert(`The Eraser (${TRANSPARENT_CHAR}) is reserved for transparency!`);
       return;
     }
     
@@ -228,7 +228,7 @@
     updateOutput();
   }
 
-  // 3. Render Palette with Drag & Drop
+  // 3. Render Palette
   function renderPalette() {
     const paletteDiv = document.getElementById('palette');
     paletteDiv.innerHTML = '';
@@ -239,14 +239,15 @@
 
       const swatch = document.createElement('div');
       swatch.className = 'swatch' + (char === activeChar ? ' active' : '');
-      swatch.style.backgroundColor = hex === 'transparent' ? '#1a1d26' : hex;
       swatch.draggable = true;
       
       if(char === TRANSPARENT_CHAR) {
+          swatch.style.backgroundColor = '#1a1d26'; // Match empty canvas color
           swatch.innerText = '░';
           swatch.title = 'Eraser (Background)';
           swatch.style.color = '#5a6080';
       } else {
+          swatch.style.backgroundColor = hex;
           const rgb = hexToRgb(hex) || {r:0, g:0, b:0};
           const brightness = Math.round(((parseInt(rgb.r) * 299) + (parseInt(rgb.g) * 587) + (parseInt(rgb.b) * 114)) / 1000);
           swatch.style.color = (brightness > 125) ? '#000' : '#fff';
@@ -280,7 +281,7 @@
     });
   }
 
-  // Add Custom Color Safely
+  // Add Custom Color
   function addNewColor() {
     let hex = document.getElementById('customColorInput').value.toLowerCase();
     for (const char of paletteOrder) {
@@ -326,7 +327,9 @@
         cell.className = 'cell';
         
         const char = gridData[y][x];
-        const hex = PALETTE[char];
+        const hex = PALETTE[char] || 'transparent';
+        
+        // Ensure transparent cells show the grid background color so they are visible
         cell.style.backgroundColor = hex === 'transparent' ? '#1a1d26' : hex;
 
         const applyTool = (e) => {
@@ -337,7 +340,7 @@
             updateOutput();
           } else if (currentMode === 'draw') {
             gridData[y][x] = activeChar;
-            const newHex = PALETTE[activeChar];
+            const newHex = PALETTE[activeChar] || 'transparent';
             cell.style.backgroundColor = newHex === 'transparent' ? '#1a1d26' : newHex;
             updateOutput();
           }
@@ -422,7 +425,7 @@
     e.target.value = ''; 
   });
 
-  // Quantize Math Helper
+  // Quantize Math
   function quantize(pixels, maxColors) {
     if (pixels.length === 0) return [];
     if (pixels.length <= maxColors) {
@@ -485,52 +488,54 @@
   }
 
   function importCode() {
-    const text = document.getElementById('output').value;
-    
-    // Read Palette
-    const paletteRegex = /(['"]?)([A-Za-z0-9\.])\1\s*:\s*['"]([^'"]+)['"]/g;
-    let match;
-    let newPalette = {};
-    let newOrder = [];
-    while ((match = paletteRegex.exec(text)) !== null) {
-      const char = match[2];
-      const hex = match[3];
-      if (!newOrder.includes(char)) {
-        newPalette[char] = hex;
-        newOrder.push(char);
+    try {
+      const text = document.getElementById('output').value;
+      
+      const paletteRegex = /(['"]?)([A-Za-z0-9\.])\1\s*:\s*['"]([^'"]+)['"]/g;
+      let match;
+      let newPalette = {};
+      let newOrder = [];
+      while ((match = paletteRegex.exec(text)) !== null) {
+        const char = match[2];
+        const hex = match[3];
+        if (!newOrder.includes(char)) {
+          newPalette[char] = hex;
+          newOrder.push(char);
+        }
       }
-    }
 
-    // Read Grid (Handles spaces safely!)
-    const rowRegex = /['"]([A-Za-z0-9\. ]{20,})['"]/g;
-    let newGrid = [];
-    while ((match = rowRegex.exec(text)) !== null) {
-      const cleanRow = match[1].replace(/ /g, '');
-      if (cleanRow.length >= 20) {
-        newGrid.push(cleanRow.split('').slice(0, 20));
+      const rowRegex = /['"]([A-Za-z0-9\. ]{20,})['"]/g;
+      let newGrid = [];
+      while ((match = rowRegex.exec(text)) !== null) {
+        const cleanRow = match[1].replace(/ /g, '');
+        if (cleanRow.length >= 20) {
+          newGrid.push(cleanRow.split('').slice(0, 20));
+        }
       }
-    }
 
-    if (newGrid.length >= 20) {
-      gridData = newGrid.slice(0, 20); 
-      
-      if (Object.keys(newPalette).length > 0) {
-        PALETTE = newPalette;
-        paletteOrder = newOrder;
+      if (newGrid.length >= 20) {
+        gridData = newGrid.slice(0, 20); 
+        
+        if (Object.keys(newPalette).length > 0) {
+          PALETTE = newPalette;
+          paletteOrder = newOrder;
+        }
+        
+        if (!PALETTE[TRANSPARENT_CHAR] && !PALETTE['.']) {
+            PALETTE[TRANSPARENT_CHAR] = 'transparent';
+            if(!paletteOrder.includes(TRANSPARENT_CHAR)) paletteOrder.unshift(TRANSPARENT_CHAR);
+        }
+        
+        activeChar = paletteOrder.length > 1 ? paletteOrder[1] : paletteOrder[0];
+        
+        renderPalette();
+        renderGrid();
+        updateOutput(); 
+      } else {
+        alert("Import failed: Could not find 20 rows of characters. Make sure you pasted the grid array correctly!");
       }
-      
-      if (!PALETTE[TRANSPARENT_CHAR] && !PALETTE['.']) {
-          PALETTE[TRANSPARENT_CHAR] = 'transparent';
-          if(!paletteOrder.includes(TRANSPARENT_CHAR)) paletteOrder.unshift(TRANSPARENT_CHAR);
-      }
-      
-      activeChar = paletteOrder.length > 1 ? paletteOrder[1] : paletteOrder[0];
-      
-      renderPalette();
-      renderGrid();
-      updateOutput(); 
-    } else {
-      alert("Import failed: Could not find exactly 20 rows of characters. Make sure you pasted the grid array completely!");
+    } catch (e) {
+      alert("Error importing code. Please check formatting.");
     }
   }
 
