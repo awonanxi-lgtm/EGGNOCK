@@ -90,6 +90,10 @@
 <h1>◈ EGGNOCK STUDIO</h1>
 <p>design signals • compile entities • inject to core</p>
 
+<button class="btn" onclick="window.location.href='index.html'" style="margin-bottom: 20px; border-color: var(--accent3); color: var(--accent3);">
+  ← RETURN TO EGGNOCK
+</button>
+
 <div class="container">
   <div class="left-panel">
     
@@ -125,9 +129,13 @@
     <div class="card" style="padding: 0; background: transparent; box-shadow: none; border: none;">
       <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
         <div class="section-title" style="margin: 0;">Compiled Array Output</div>
-        <button class="btn primary" onclick="copyCode()" style="padding: 6px 12px; font-size: 12px;">📋 Copy Block</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn" onclick="importCode()" style="padding: 6px 12px; font-size: 12px; border-color: var(--accent2); color: var(--accent2);">📥 Import Block</button>
+          <button class="btn primary" onclick="copyCode()" style="padding: 6px 12px; font-size: 12px;">📋 Copy Block</button>
+        </div>
       </div>
-      <textarea id="output" readonly></textarea>
+      <div class="hint-text">Paste code below and click Import to edit an existing sprite.</div>
+      <textarea id="output"></textarea>
     </div>
   </div>
 </div>
@@ -154,7 +162,6 @@
     'F': '#772911'
   };
 
-  // Drag and Drop State
   let draggedChar = null;
 
   // Helper: Convert Hex to RGB
@@ -166,7 +173,6 @@
   function rgbToHex(r, g, b) {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
-
   function colorDistance(c1, c2) {
     return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
   }
@@ -183,11 +189,7 @@
     newChar = newChar.trim().charAt(0);
     
     if (newChar === oldChar) return;
-    
-    if (PALETTE[newChar]) {
-      alert(`The character '${newChar}' is already in use!`);
-      return;
-    }
+    if (PALETTE[newChar]) { alert(`The character '${newChar}' is already in use!`); return; }
 
     PALETTE[newChar] = PALETTE[oldChar];
     delete PALETTE[oldChar];
@@ -240,7 +242,6 @@
       });
 
       swatch.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
-
       swatch.addEventListener('drop', (e) => {
         e.preventDefault();
         if (draggedChar && draggedChar !== char) {
@@ -252,7 +253,6 @@
           updateOutput();
         }
       });
-
       swatch.addEventListener('dragend', () => { swatch.style.opacity = '1'; draggedChar = null; });
       paletteDiv.appendChild(swatch);
     });
@@ -265,10 +265,7 @@
       if (PALETTE[char] === hex) { activeChar = char; renderPalette(); return; }
     }
     
-    if (nextCharIdx >= charPool.length) {
-      alert("Character pool exhausted! Rename existing characters if you need more space.");
-      return;
-    }
+    if (nextCharIdx >= charPool.length) { alert("Character pool exhausted! Rename existing characters if you need more space."); return; }
 
     let newChar = charPool[nextCharIdx++];
     PALETTE[newChar] = hex;
@@ -318,7 +315,7 @@
     updateOutput();
   }
 
-  // 5. Image Upload Logic with Color Reduction
+  // 5. Image Upload Logic
   document.getElementById('imageUpload').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -335,9 +332,7 @@
       
       let allPixels = [];
       for (let i = 0; i < imgData.length; i += 4) {
-        if (imgData[i+3] >= 128) {
-          allPixels.push({ r: imgData[i], g: imgData[i+1], b: imgData[i+2] });
-        }
+        if (imgData[i+3] >= 128) { allPixels.push({ r: imgData[i], g: imgData[i+1], b: imgData[i+2] }); }
       }
 
       let simplifiedRgbPalette = quantize(allPixels, 6);
@@ -357,7 +352,6 @@
       });
       
       activeChar = paletteOrder[1] || TRANSPARENT_CHAR;
-
       const newPaletteRgbs = paletteOrder.filter(c=>c!==TRANSPARENT_CHAR).map(c => ({...hexToRgb(PALETTE[c]), char: c}));
 
       for (let y = 0; y < 20; y++) {
@@ -370,7 +364,6 @@
           } else {
             const currentRgb = {r: imgData[i], g: imgData[i+1], b: imgData[i+2]};
             let nearest = {dist: 99999, char: paletteOrder[1]};
-            
             newPaletteRgbs.forEach(palColor => {
               const d = colorDistance(currentRgb, palColor);
               if (d < nearest.dist) nearest = {dist: d, char: palColor.char};
@@ -387,26 +380,40 @@
     e.target.value = ''; 
   });
 
+  // Quantize Math Helper
   function quantize(pixels, maxColors) {
     if (pixels.length === 0) return [];
     if (pixels.length <= maxColors) {
         let unique = [];
-        pixels.forEach(p => {
-            if(!unique.find(up => up.r === p.r && up.g === p.g && up.b === p.b)) unique.push(p);
-        });
+        pixels.forEach(p => { if(!unique.find(up => up.r === p.r && up.g === p.g && up.b === p.b)) unique.push(p); });
         return unique;
     }
     let boxes = [pixels];
     while (boxes.length < maxColors) {
-        let boxIdxToSplit = 0;
-        let maxRange = -1;
+        let boxIdxToSplit = 0, maxRange = -1;
         boxes.forEach((box, i) => {
-            const range = getColorRange(box);
+            let min={r:255,g:255,b:255}, max={r:0,g:0,b:0};
+            box.forEach(p => {
+                min.r = Math.min(min.r, p.r); max.r = Math.max(max.r, p.r);
+                min.g = Math.min(min.g, p.g); max.g = Math.max(max.g, p.g);
+                min.b = Math.min(min.b, p.b); max.b = Math.max(max.b, p.b);
+            });
+            const rR = max.r-min.r, gR = max.g-min.g, bR = max.b-min.b;
+            const range = Math.max(rR, gR, bR);
             if(range > maxRange) { maxRange = range; boxIdxToSplit = i; }
         });
         const boxToSplit = boxes.splice(boxIdxToSplit, 1)[0];
-        const {splitChannel} = getRanges(boxToSplit);
-        boxToSplit.sort((a,b) => a[splitChannel] - b[splitChannel]);
+        let min={r:255,g:255,b:255}, max={r:0,g:0,b:0};
+        boxToSplit.forEach(p => {
+            min.r = Math.min(min.r, p.r); max.r = Math.max(max.r, p.r);
+            min.g = Math.min(min.g, p.g); max.g = Math.max(max.g, p.g);
+            min.b = Math.min(min.b, p.b); max.b = Math.max(max.b, p.b);
+        });
+        const rR = max.r-min.r, gR = max.g-min.g, bR = max.b-min.b;
+        let sc = 'r';
+        if(gR >= rR && gR >= bR) sc = 'g';
+        if(bR >= rR && bR >= gR) sc = 'b';
+        boxToSplit.sort((a,b) => a[sc] - b[sc]);
         const mid = Math.floor(boxToSplit.length / 2);
         boxes.push(boxToSplit.slice(0, mid));
         boxes.push(boxToSplit.slice(mid));
@@ -417,27 +424,12 @@
     });
   }
 
-  function getRanges(pixels) {
-    let min = {r:255, g:255, b:255}, max={r:0,g:0,b:0};
-    pixels.forEach(p => {
-        min.r = Math.min(min.r, p.r); max.r = Math.max(max.r, p.r);
-        min.g = Math.min(min.g, p.g); max.g = Math.max(max.g, p.g);
-        min.b = Math.min(min.b, p.b); max.b = Math.max(max.b, p.b);
-    });
-    const rRange = max.r-min.r, gRange = max.g-min.g, bRange = max.b-min.b;
-    let splitChannel = 'r';
-    if(gRange >= rRange && gRange >= bRange) splitChannel = 'g';
-    if(bRange >= rRange && bRange >= gRange) splitChannel = 'b';
-    return {splitChannel, maxRange: Math.max(rRange, gRange, bRange)};
-  }
-  function getColorRange(pixels) { return getRanges(pixels).maxRange; }
-
-  // 6. Code Export - Formatted for Eggnock
+  // 6. Code Export & Import
   function updateOutput() {
     const lines = gridData.map(row => `      '${row.join('')}'`);
     let paletteStr = `    custom_name: {\n`;
     for(const char of paletteOrder) {
-        paletteStr += `      ${char}: '${PALETTE[char]}',\n`;
+        paletteStr += `      '${char}': '${PALETTE[char]}',\n`;
     }
     paletteStr += `    }`;
     const code = `// 1. Paste this array into PIXEL_MAPS:\n    custom_name: [\n${lines.join(',\n')}\n    ],\n\n// 2. Paste this palette into PALETTES:\n${paletteStr}`;
@@ -448,6 +440,55 @@
     const out = document.getElementById('output');
     out.select();
     document.execCommand('copy');
+  }
+
+  function importCode() {
+    const text = document.getElementById('output').value;
+    
+    // Parse Palette: matches 'A': '#ffffff' or A: '#ffffff' or "A": "#ffffff"
+    const paletteRegex = /(['"]?)([A-Za-z0-9\.])\1\s*:\s*['"]([^'"]+)['"]/g;
+    let match;
+    let newPalette = {};
+    let newOrder = [];
+    while ((match = paletteRegex.exec(text)) !== null) {
+      const char = match[2];
+      const hex = match[3];
+      if (!newOrder.includes(char)) {
+        newPalette[char] = hex;
+        newOrder.push(char);
+      }
+    }
+
+    // Parse Grid: matches exactly 20 characters inside quotes
+    const rowRegex = /['"]([A-Za-z0-9\.]{20})['"]/g;
+    let newGrid = [];
+    while ((match = rowRegex.exec(text)) !== null) {
+      newGrid.push(match[1].split(''));
+    }
+
+    // Apply if valid
+    if (newGrid.length >= 20) {
+      gridData = newGrid.slice(0, 20); // grab only the first 20 rows
+      
+      if (Object.keys(newPalette).length > 0) {
+        PALETTE = newPalette;
+        paletteOrder = newOrder;
+      }
+      
+      // Ensure 'A' exists for Eggnock's transparency
+      if (!PALETTE[TRANSPARENT_CHAR] && !PALETTE['.']) {
+          PALETTE[TRANSPARENT_CHAR] = 'transparent';
+          if(!paletteOrder.includes(TRANSPARENT_CHAR)) paletteOrder.unshift(TRANSPARENT_CHAR);
+      }
+      
+      activeChar = paletteOrder.length > 1 ? paletteOrder[1] : paletteOrder[0];
+      
+      renderPalette();
+      renderGrid();
+      updateOutput(); // Cleans up formatting
+    } else {
+      alert("Import failed: Could not find exactly 20 rows of 20 characters in the text. Make sure you pasted the grid array correctly!");
+    }
   }
 
   // Initialize
