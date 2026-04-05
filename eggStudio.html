@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eggnock Palette & Pixel Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12141a;
+    --bg2: #1a1d26;
+    --card: #1e2130;
+    --border: #2e3348;
+    --text: #c8ccd8;
+    --text-dim: #5a6080;
+    --accent: #c4714a;
+    --accent2: #7a9ec4;
+    --font-display: 'VT323', monospace;
+    --font-mono: 'Share Tech Mono', monospace;
+  }
+
+  body { 
+    font-family: var(--font-mono); 
+    background: var(--bg); 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    padding: 20px; 
+    color: var(--text); 
+  }
+  h1 { font-family: var(--font-display); color: var(--accent); margin-bottom: 5px; font-size: 3rem; letter-spacing: 3px; text-shadow: 0 0 10px #c4714a55; }
+  p { color: var(--text-dim); margin-bottom: 20px; font-size: 0.9rem; letter-spacing: 0.1em; }
+  
+  .container { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
+  .left-panel { display: flex; flex-direction: column; align-items: center; width: 420px; }
+  .right-panel { display: flex; flex-direction: column; width: 400px; }
+
+  .card { 
+    background: var(--card); padding: 15px; border-radius: 8px; 
+    border: 1px solid var(--border); box-shadow: inset 0 1px 0 #ffffff08; 
+    margin-bottom: 15px; width: 100%; box-sizing: border-box;
+  }
+  
+  .section-title { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase; }
+  .hint-text { font-size: 0.7rem; color: #5a6080; margin-bottom: 10px; font-style: italic; }
+
+  .palette { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; min-height: 38px; }
+  .swatch { 
+    width: 32px; height: 32px; border-radius: 4px; 
+    border: 1px solid var(--border); cursor: grab; 
+    display: flex; align-items: center; justify-content: center; 
+    font-weight: bold; font-family: var(--font-mono); font-size: 14px;
+    transition: transform 0.1s, border-color 0.1s;
+  }
+  .swatch:active { cursor: grabbing; }
+  .swatch.active { border-color: var(--accent); transform: scale(1.15); z-index: 2; box-shadow: 0 0 10px var(--accent); }
+  
+  .color-picker-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px;}
+  input[type="color"] { cursor: pointer; width: 40px; height: 40px; border: none; border-radius: 4px; background: none; }
+  
+  #grid { 
+    display: grid; grid-template-columns: repeat(20, 20px); gap: 1px; 
+    background: var(--border); border: 2px solid var(--border); border-radius: 4px; 
+    cursor: crosshair; touch-action: none; margin: 0 auto;
+  }
+  .cell { width: 20px; height: 20px; background: var(--bg); user-select: none; }
+  
+  .btn { 
+    background: var(--bg2); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; 
+    border-radius: 4px; font-weight: bold; cursor: pointer; font-family: var(--font-mono);
+    transition: all 0.15s; display: inline-block; letter-spacing: 0.1em;
+  }
+  .btn:hover { border-color: var(--accent); background: #2a2030; color: var(--accent); }
+  .btn:active { transform: scale(0.96); }
+  .btn.primary { background: transparent; border-color: var(--accent); color: var(--accent); }
+  .btn.primary:hover { background: #c4714a22; }
+
+  .actions { display: flex; gap: 10px; justify-content: center; margin-top: 15px;}
+  
+  textarea { 
+    width: 100%; height: 500px; font-family: var(--font-mono); padding: 15px; 
+    border-radius: 4px; border: 1px solid var(--border); background: var(--bg); 
+    font-size: 13px; resize: none; outline: none; color: var(--text-bright); white-space: pre; box-sizing: border-box;
+  }
+  textarea:focus { border-color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<h1>◈ EGGNOCK STUDIO</h1>
+<p>design signals • compile entities • inject to core</p>
+
+<div class="container">
+  <div class="left-panel">
+    
+    <div class="card" style="text-align: center; border-color: var(--accent2);">
+      <div class="section-title" style="color: var(--accent2);">1. Import External Signal (Image)</div>
+      <div class="hint-text" style="color: var(--text-dim);">Auto-crushes to max 6 hex values</div>
+      <input type="file" id="imageUpload" accept="image/*" style="font-family: var(--font-mono); font-size: 12px; color: var(--accent2);">
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div class="section-title">2. Matrix Palette</div>
+      </div>
+      <div class="hint-text">Drag to reorder • Double-click to rename character</div>
+      <div class="palette" id="palette"></div>
+      <div class="color-picker-row">
+        <input type="color" id="customColorInput" value="#c4714a">
+        <button class="btn" onclick="addNewColor()">+ Inject Hex</button>
+      </div>
+    </div>
+
+    <div class="card" style="background: transparent; box-shadow: none; padding: 0; border: none;">
+      <div class="section-title" style="text-align: center;">3. Canvas Grid</div>
+      <div id="grid"></div>
+      <div class="actions">
+        <button class="btn" onclick="clearGrid()">[x] Purge Canvas</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="right-panel">
+    <div class="card" style="padding: 0; background: transparent; box-shadow: none; border: none;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+        <div class="section-title" style="margin: 0;">Compiled Array Output</div>
+        <button class="btn primary" onclick="copyCode()" style="padding: 6px 12px; font-size: 12px;">📋 Copy Block</button>
+      </div>
+      <textarea id="output" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 1. Setup Data - Eggnock uses 'A' for transparent!
+  const TRANSPARENT_CHAR = 'A';
+  let gridData = Array.from({length: 20}, () => Array(20).fill(TRANSPARENT_CHAR));
+  let activeChar = 'B';
+  let isDrawing = false;
+  
+  // Character pool starts at B since A is reserved for transparency
+  const charPool = 'BCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'.split('');
+  let nextCharIdx = 0;
+
+  // Initial core palette from Eggnock's format
+  let paletteOrder = ['A', 'B', 'C', 'D', 'E', 'F'];
+  let PALETTE = {
+    'A': 'transparent',
+    'B': '#605c5a',
+    'C': '#ce4b22',
+    'D': '#dc6743',
+    'E': '#351f19',
+    'F': '#772911'
+  };
+
+  // Drag and Drop State
+  let draggedChar = null;
+
+  // Helper: Convert Hex to RGB
+  function hexToRgb(hex) {
+    if (hex === 'transparent') return {r:18,g:20,b:26,a:0}; // Matches --bg
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16), a:255 } : null;
+  }
+  function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  function colorDistance(c1, c2) {
+    return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
+  }
+
+  // 2. Rename Logic
+  function renameColor(oldChar) {
+    if (oldChar === TRANSPARENT_CHAR) {
+      alert(`The Eraser (${TRANSPARENT_CHAR}) is reserved for transparency in Eggnock!`);
+      return;
+    }
+    
+    let newChar = prompt(`Rename character for color ${PALETTE[oldChar]}:\n(Enter a single letter or number)`, oldChar);
+    if (!newChar) return;
+    newChar = newChar.trim().charAt(0);
+    
+    if (newChar === oldChar) return;
+    
+    if (PALETTE[newChar]) {
+      alert(`The character '${newChar}' is already in use!`);
+      return;
+    }
+
+    PALETTE[newChar] = PALETTE[oldChar];
+    delete PALETTE[oldChar];
+    const orderIdx = paletteOrder.indexOf(oldChar);
+    if (orderIdx > -1) paletteOrder[orderIdx] = newChar;
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        if (gridData[y][x] === oldChar) gridData[y][x] = newChar;
+      }
+    }
+    if (activeChar === oldChar) activeChar = newChar;
+    renderPalette();
+    renderGrid();
+    updateOutput();
+  }
+
+  // 3. Render Palette with Drag & Drop
+  function renderPalette() {
+    const paletteDiv = document.getElementById('palette');
+    paletteDiv.innerHTML = '';
+    
+    paletteOrder.forEach(char => {
+      const hex = PALETTE[char];
+      if (!hex) return;
+
+      const swatch = document.createElement('div');
+      swatch.className = 'swatch' + (char === activeChar ? ' active' : '');
+      swatch.style.backgroundColor = hex === 'transparent' ? '#12141a' : hex;
+      swatch.draggable = true;
+      
+      if(char === TRANSPARENT_CHAR) {
+          swatch.innerText = '░';
+          swatch.title = 'Eraser (Background)';
+          swatch.style.color = '#5a6080';
+      } else {
+          const rgb = hexToRgb(hex) || {r:0, g:0, b:0};
+          const brightness = Math.round(((parseInt(rgb.r) * 299) + (parseInt(rgb.g) * 587) + (parseInt(rgb.b) * 114)) / 1000);
+          swatch.style.color = (brightness > 125) ? '#000' : '#fff';
+          swatch.innerText = char;
+          swatch.title = `Color: ${hex} (Double-click to rename)`;
+      }
+      
+      swatch.onclick = () => { activeChar = char; renderPalette(); };
+      swatch.ondblclick = () => { renameColor(char); };
+
+      swatch.addEventListener('dragstart', (e) => {
+        draggedChar = char;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => swatch.style.opacity = '0.5', 0);
+      });
+
+      swatch.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+
+      swatch.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (draggedChar && draggedChar !== char) {
+          const fromIdx = paletteOrder.indexOf(draggedChar);
+          const toIdx = paletteOrder.indexOf(char);
+          paletteOrder.splice(fromIdx, 1);
+          paletteOrder.splice(toIdx, 0, draggedChar);
+          renderPalette();
+          updateOutput();
+        }
+      });
+
+      swatch.addEventListener('dragend', () => { swatch.style.opacity = '1'; draggedChar = null; });
+      paletteDiv.appendChild(swatch);
+    });
+  }
+
+  // Add Custom Color Safely
+  function addNewColor() {
+    let hex = document.getElementById('customColorInput').value.toLowerCase();
+    for (const char of paletteOrder) {
+      if (PALETTE[char] === hex) { activeChar = char; renderPalette(); return; }
+    }
+    
+    if (nextCharIdx >= charPool.length) {
+      alert("Character pool exhausted! Rename existing characters if you need more space.");
+      return;
+    }
+
+    let newChar = charPool[nextCharIdx++];
+    PALETTE[newChar] = hex;
+    paletteOrder.push(newChar);
+    activeChar = newChar;
+    renderPalette();
+    updateOutput();
+  }
+
+  // 4. Grid Drawing Logic
+  const gridDiv = document.getElementById('grid');
+  document.body.addEventListener('mousedown', () => isDrawing = true);
+  document.body.addEventListener('mouseup', () => isDrawing = false);
+
+  function renderGrid() {
+    gridDiv.innerHTML = '';
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        
+        const char = gridData[y][x];
+        const hex = PALETTE[char];
+        cell.style.backgroundColor = hex === 'transparent' ? '#12141a' : hex;
+        if (hex === 'transparent') cell.style.border = '1px solid #1a1d26';
+
+        const paint = () => {
+          gridData[y][x] = activeChar;
+          const newHex = PALETTE[activeChar];
+          cell.style.backgroundColor = newHex === 'transparent' ? '#12141a' : newHex;
+          cell.style.border = (newHex === 'transparent') ? '1px solid #1a1d26' : 'none';
+          updateOutput();
+        };
+
+        cell.addEventListener('mousedown', (e) => { e.preventDefault(); paint(); });
+        cell.addEventListener('mouseenter', (e) => { if (isDrawing) paint(); });
+        gridDiv.appendChild(cell);
+      }
+    }
+  }
+
+  function clearGrid() {
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) { gridData[y][x] = TRANSPARENT_CHAR; }
+    }
+    renderGrid();
+    updateOutput();
+  }
+
+  // 5. Image Upload Logic with Color Reduction
+  document.getElementById('imageUpload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 20; canvas.height = 20;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false; 
+      ctx.drawImage(img, 0, 0, 20, 20);
+      
+      const imgData = ctx.getImageData(0, 0, 20, 20).data;
+      
+      let allPixels = [];
+      for (let i = 0; i < imgData.length; i += 4) {
+        if (imgData[i+3] >= 128) {
+          allPixels.push({ r: imgData[i], g: imgData[i+1], b: imgData[i+2] });
+        }
+      }
+
+      let simplifiedRgbPalette = quantize(allPixels, 6);
+      
+      PALETTE = {};
+      PALETTE[TRANSPARENT_CHAR] = 'transparent';
+      paletteOrder = [TRANSPARENT_CHAR];
+      nextCharIdx = 0; 
+
+      simplifiedRgbPalette.forEach(rgb => {
+        if(nextCharIdx < charPool.length) {
+            let hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            let char = charPool[nextCharIdx++];
+            PALETTE[char] = hex;
+            paletteOrder.push(char);
+        }
+      });
+      
+      activeChar = paletteOrder[1] || TRANSPARENT_CHAR;
+
+      const newPaletteRgbs = paletteOrder.filter(c=>c!==TRANSPARENT_CHAR).map(c => ({...hexToRgb(PALETTE[c]), char: c}));
+
+      for (let y = 0; y < 20; y++) {
+        for (let x = 0; x < 20; x++) {
+          const i = (y * 20 + x) * 4;
+          const a = imgData[i+3];
+          
+          if (a < 128) {
+            gridData[y][x] = TRANSPARENT_CHAR;
+          } else {
+            const currentRgb = {r: imgData[i], g: imgData[i+1], b: imgData[i+2]};
+            let nearest = {dist: 99999, char: paletteOrder[1]};
+            
+            newPaletteRgbs.forEach(palColor => {
+              const d = colorDistance(currentRgb, palColor);
+              if (d < nearest.dist) nearest = {dist: d, char: palColor.char};
+            });
+            gridData[y][x] = nearest.char;
+          }
+        }
+      }
+      renderPalette();
+      renderGrid();
+      updateOutput();
+    };
+    img.src = URL.createObjectURL(file);
+    e.target.value = ''; 
+  });
+
+  function quantize(pixels, maxColors) {
+    if (pixels.length === 0) return [];
+    if (pixels.length <= maxColors) {
+        let unique = [];
+        pixels.forEach(p => {
+            if(!unique.find(up => up.r === p.r && up.g === p.g && up.b === p.b)) unique.push(p);
+        });
+        return unique;
+    }
+    let boxes = [pixels];
+    while (boxes.length < maxColors) {
+        let boxIdxToSplit = 0;
+        let maxRange = -1;
+        boxes.forEach((box, i) => {
+            const range = getColorRange(box);
+            if(range > maxRange) { maxRange = range; boxIdxToSplit = i; }
+        });
+        const boxToSplit = boxes.splice(boxIdxToSplit, 1)[0];
+        const {splitChannel} = getRanges(boxToSplit);
+        boxToSplit.sort((a,b) => a[splitChannel] - b[splitChannel]);
+        const mid = Math.floor(boxToSplit.length / 2);
+        boxes.push(boxToSplit.slice(0, mid));
+        boxes.push(boxToSplit.slice(mid));
+    }
+    return boxes.map(box => {
+        const sum = box.reduce((acc, p) => ({r: acc.r+p.r, g: acc.g+p.g, b: acc.b+p.b}), {r:0,g:0,b:0});
+        return {r: Math.round(sum.r/box.length), g: Math.round(sum.g/box.length), b: Math.round(sum.b/box.length)};
+    });
+  }
+
+  function getRanges(pixels) {
+    let min = {r:255, g:255, b:255}, max={r:0,g:0,b:0};
+    pixels.forEach(p => {
+        min.r = Math.min(min.r, p.r); max.r = Math.max(max.r, p.r);
+        min.g = Math.min(min.g, p.g); max.g = Math.max(max.g, p.g);
+        min.b = Math.min(min.b, p.b); max.b = Math.max(max.b, p.b);
+    });
+    const rRange = max.r-min.r, gRange = max.g-min.g, bRange = max.b-min.b;
+    let splitChannel = 'r';
+    if(gRange >= rRange && gRange >= bRange) splitChannel = 'g';
+    if(bRange >= rRange && bRange >= gRange) splitChannel = 'b';
+    return {splitChannel, maxRange: Math.max(rRange, gRange, bRange)};
+  }
+  function getColorRange(pixels) { return getRanges(pixels).maxRange; }
+
+  // 6. Code Export - Formatted for Eggnock
+  function updateOutput() {
+    const lines = gridData.map(row => `      '${row.join('')}'`);
+    let paletteStr = `    custom_name: {\n`;
+    for(const char of paletteOrder) {
+        paletteStr += `      ${char}: '${PALETTE[char]}',\n`;
+    }
+    paletteStr += `    }`;
+    const code = `// 1. Paste this array into PIXEL_MAPS:\n    custom_name: [\n${lines.join(',\n')}\n    ],\n\n// 2. Paste this palette into PALETTES:\n${paletteStr}`;
+    document.getElementById('output').value = code;
+  }
+
+  function copyCode() {
+    const out = document.getElementById('output');
+    out.select();
+    document.execCommand('copy');
+  }
+
+  // Initialize
+  renderPalette();
+  renderGrid();
+  updateOutput();
+</script>
+</body>
+</html>
