@@ -149,7 +149,6 @@
   
   // Character pool starts at B since A is reserved for transparency
   const charPool = 'BCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'.split('');
-  let nextCharIdx = 0;
 
   // Initial core palette from Eggnock's format
   let paletteOrder = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -163,6 +162,16 @@
   };
 
   let draggedChar = null;
+
+  // NEW: Smart function to find the next completely unused character in the pool
+  function getNextAvailableChar() {
+    for (let char of charPool) {
+      if (!PALETTE.hasOwnProperty(char)) {
+        return char;
+      }
+    }
+    return null; // Pool exhausted
+  }
 
   // Helper: Convert Hex to RGB
   function hexToRgb(hex) {
@@ -265,9 +274,9 @@
       if (PALETTE[char] === hex) { activeChar = char; renderPalette(); return; }
     }
     
-    if (nextCharIdx >= charPool.length) { alert("Character pool exhausted! Rename existing characters if you need more space."); return; }
+    let newChar = getNextAvailableChar();
+    if (!newChar) { alert("Character pool exhausted! Rename existing characters if you need more space."); return; }
 
-    let newChar = charPool[nextCharIdx++];
     PALETTE[newChar] = hex;
     paletteOrder.push(newChar);
     activeChar = newChar;
@@ -340,12 +349,11 @@
       PALETTE = {};
       PALETTE[TRANSPARENT_CHAR] = 'transparent';
       paletteOrder = [TRANSPARENT_CHAR];
-      nextCharIdx = 0; 
 
       simplifiedRgbPalette.forEach(rgb => {
-        if(nextCharIdx < charPool.length) {
-            let hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-            let char = charPool[nextCharIdx++];
+        let hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+        let char = getNextAvailableChar();
+        if(char) {
             PALETTE[char] = hex;
             paletteOrder.push(char);
         }
@@ -445,7 +453,6 @@
   function importCode() {
     const text = document.getElementById('output').value;
     
-    // Parse Palette: matches 'A': '#ffffff' or A: '#ffffff' or "A": "#ffffff"
     const paletteRegex = /(['"]?)([A-Za-z0-9\.])\1\s*:\s*['"]([^'"]+)['"]/g;
     let match;
     let newPalette = {};
@@ -459,42 +466,15 @@
       }
     }
 
-    // Parse Grid: matches exactly 20 characters inside quotes
     const rowRegex = /['"]([A-Za-z0-9\.]{20})['"]/g;
     let newGrid = [];
     while ((match = rowRegex.exec(text)) !== null) {
       newGrid.push(match[1].split(''));
     }
 
-    // Apply if valid
     if (newGrid.length >= 20) {
-      gridData = newGrid.slice(0, 20); // grab only the first 20 rows
+      gridData = newGrid.slice(0, 20); 
       
       if (Object.keys(newPalette).length > 0) {
         PALETTE = newPalette;
-        paletteOrder = newOrder;
-      }
-      
-      // Ensure 'A' exists for Eggnock's transparency
-      if (!PALETTE[TRANSPARENT_CHAR] && !PALETTE['.']) {
-          PALETTE[TRANSPARENT_CHAR] = 'transparent';
-          if(!paletteOrder.includes(TRANSPARENT_CHAR)) paletteOrder.unshift(TRANSPARENT_CHAR);
-      }
-      
-      activeChar = paletteOrder.length > 1 ? paletteOrder[1] : paletteOrder[0];
-      
-      renderPalette();
-      renderGrid();
-      updateOutput(); // Cleans up formatting
-    } else {
-      alert("Import failed: Could not find exactly 20 rows of 20 characters in the text. Make sure you pasted the grid array correctly!");
-    }
-  }
-
-  // Initialize
-  renderPalette();
-  renderGrid();
-  updateOutput();
-</script>
-</body>
-</html>
+        paletteOrder =
