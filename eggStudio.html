@@ -216,7 +216,6 @@
       const confirmMerge = confirm(`The character '${newChar}' is already in use! Do you want to overwrite it and merge these colors?`);
       if (!confirmMerge) return;
 
-      // Merge logic: newChar takes oldChar's color. oldChar is deleted.
       PALETTE[newChar] = PALETTE[oldChar];
       delete PALETTE[oldChar];
       
@@ -235,7 +234,6 @@
       return;
     }
 
-    // Standard rename (character doesn't exist yet)
     PALETTE[newChar] = PALETTE[oldChar];
     delete PALETTE[oldChar];
     const orderIdx = paletteOrder.indexOf(oldChar);
@@ -493,11 +491,14 @@
   // 6. Code Export & Import
   function updateOutput() {
     const lines = gridData.map(row => `      '${row.join('')}'`);
-    let paletteStr = `    custom_name: {\n`;
+    
+    // Generate Single-Line Format
+    let paletteEntries = [];
     for(const char of paletteOrder) {
-        paletteStr += `      '${char}': '${PALETTE[char]}',\n`;
+        paletteEntries.push(`${char}: '${PALETTE[char]}'`);
     }
-    paletteStr += `    }`;
+    let paletteStr = `    custom_name: { ${paletteEntries.join(', ')} },`;
+
     const code = `// 1. Paste this array into PIXEL_MAPS:\n    custom_name: [\n${lines.join(',\n')}\n    ],\n\n// 2. Paste this palette into PALETTES:\n${paletteStr}`;
     document.getElementById('output').value = code;
   }
