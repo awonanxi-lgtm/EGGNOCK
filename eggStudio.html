@@ -58,7 +58,6 @@
   .color-picker-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px;}
   input[type="color"] { cursor: pointer; width: 40px; height: 40px; border: none; border-radius: 4px; background: none; }
   
-  /* The visible canvas grid styling */
   #grid { 
     display: grid; grid-template-columns: repeat(20, 20px); gap: 1px; 
     background: var(--border); border: 2px solid var(--border); border-radius: 4px; 
@@ -149,17 +148,15 @@
 </div>
 
 <script>
-  // 1. Setup Data - Eggnock uses 'A' for transparent!
+  // 1. Setup Data
   const TRANSPARENT_CHAR = 'A';
   let gridData = Array.from({length: 20}, () => Array(20).fill(TRANSPARENT_CHAR));
   let activeChar = 'B';
   let isDrawing = false;
   let currentMode = 'draw';
   
-  // Character pool
   const charPool = 'BCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'.split('');
 
-  // Initial core palette
   let paletteOrder = ['A', 'B', 'C', 'D', 'E', 'F'];
   let PALETTE = {
     'A': 'transparent',
@@ -178,7 +175,6 @@
     document.getElementById('tool-fill').classList.toggle('primary', mode === 'fill');
   }
 
-  // Smart function to find the next completely unused character in the pool
   function getNextAvailableChar() {
     for (let char of charPool) {
       if (!PALETTE.hasOwnProperty(char)) return char;
@@ -186,7 +182,6 @@
     return null; 
   }
 
-  // Helpers
   function hexToRgb(hex) {
     if (hex === 'transparent') return {r:26,g:29,b:38,a:0}; 
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -199,7 +194,7 @@
     return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
   }
 
-  // 2. Rename Logic
+  // 2. Rename Logic - WITH MERGE ABILITY
   function renameColor(oldChar) {
     if (oldChar === TRANSPARENT_CHAR) {
       alert(`The Eraser (${TRANSPARENT_CHAR}) is reserved for transparency!`);
@@ -211,8 +206,36 @@
     newChar = newChar.trim().charAt(0);
     
     if (newChar === oldChar) return;
-    if (PALETTE[newChar]) { alert(`The character '${newChar}' is already in use!`); return; }
 
+    if (PALETTE[newChar]) { 
+      if (newChar === TRANSPARENT_CHAR) {
+        alert(`You cannot merge a color into the background eraser (${TRANSPARENT_CHAR}).`);
+        return;
+      }
+      
+      const confirmMerge = confirm(`The character '${newChar}' is already in use! Do you want to overwrite it and merge these colors?`);
+      if (!confirmMerge) return;
+
+      // Merge logic: newChar takes oldChar's color. oldChar is deleted.
+      PALETTE[newChar] = PALETTE[oldChar];
+      delete PALETTE[oldChar];
+      
+      const oldOrderIdx = paletteOrder.indexOf(oldChar);
+      if (oldOrderIdx > -1) paletteOrder.splice(oldOrderIdx, 1);
+      
+      for (let y = 0; y < 20; y++) {
+        for (let x = 0; x < 20; x++) {
+          if (gridData[y][x] === oldChar) gridData[y][x] = newChar;
+        }
+      }
+      if (activeChar === oldChar) activeChar = newChar;
+      renderPalette();
+      renderGrid();
+      updateOutput();
+      return;
+    }
+
+    // Standard rename (character doesn't exist yet)
     PALETTE[newChar] = PALETTE[oldChar];
     delete PALETTE[oldChar];
     const orderIdx = paletteOrder.indexOf(oldChar);
@@ -242,7 +265,7 @@
       swatch.draggable = true;
       
       if(char === TRANSPARENT_CHAR) {
-          swatch.style.backgroundColor = '#1a1d26'; // Match empty canvas color
+          swatch.style.backgroundColor = '#1a1d26'; 
           swatch.innerText = '░';
           swatch.title = 'Eraser (Background)';
           swatch.style.color = '#5a6080';
@@ -252,7 +275,7 @@
           const brightness = Math.round(((parseInt(rgb.r) * 299) + (parseInt(rgb.g) * 587) + (parseInt(rgb.b) * 114)) / 1000);
           swatch.style.color = (brightness > 125) ? '#000' : '#fff';
           swatch.innerText = char;
-          swatch.title = `Color: ${hex} (Double-click to rename)`;
+          swatch.title = `Color: ${hex} (Double-click to rename or merge)`;
       }
       
       swatch.onclick = () => { activeChar = char; renderPalette(); };
@@ -281,7 +304,6 @@
     });
   }
 
-  // Add Custom Color
   function addNewColor() {
     let hex = document.getElementById('customColorInput').value.toLowerCase();
     for (const char of paletteOrder) {
@@ -329,7 +351,6 @@
         const char = gridData[y][x];
         const hex = PALETTE[char] || 'transparent';
         
-        // Ensure transparent cells show the grid background color so they are visible
         cell.style.backgroundColor = hex === 'transparent' ? '#1a1d26' : hex;
 
         const applyTool = (e) => {
